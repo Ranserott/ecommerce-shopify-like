@@ -1,12 +1,12 @@
 import { prisma } from '@/lib/prisma'
 
 export async function getCart(sessionId: string) {
-  const cart = await prisma.cart.findUnique({
+  const carts = await prisma.cart.findMany({
     where: { sessionId },
     include: {
       items: {
         include: {
-          variant: {
+          productVariant: {
             include: {
               product: true
             }
@@ -15,66 +15,94 @@ export async function getCart(sessionId: string) {
       }
     }
   })
-  return cart
+
+  if (carts.length === 0) return null
+  return carts[0]
 }
 
-export async function addToCart(sessionId: string, variantId: string, quantity: number = 1) {
-  let cart = await prisma.cart.findUnique({
-    where: { sessionId }
+export async function getOrCreateCart(sessionId: string) {
+  let cart = await prisma.cart.findFirst({
+    where: { sessionId },
+    include: {
+      items: {
+        include: {
+          productVariant: {
+            include: {
+              product: true
+            }
+          }
+        }
+      }
+    }
   })
 
   if (!cart) {
     cart = await prisma.cart.create({
-      data: { sessionId }
+      data: { sessionId },
+      include: {
+        items: {
+          include: {
+            productVariant: {
+              include: {
+                product: true
+              }
+            }
+          }
+        }
+      }
     })
   }
+
+  return cart
+}
+
+export async function addToCart(sessionId: string, productVariantId: string, quantity: number = 1) {
+  const cart = await getOrCreateCart(sessionId)
 
   const existingItem = await prisma.cartItem.findFirst({
     where: {
       cartId: cart.id,
-      variantId
+      productVariantId
     }
   })
 
   if (existingItem) {
-    await prisma.cartItem.update({
+    return await prisma.cartItem.update({
       where: { id: existingItem.id },
       data: { quantity: { increment: quantity } }
     })
-  } else {
-    await prisma.cartItem.create({
-      data: {
-        cartId: cart.id,
-        variantId,
-        quantity
-      }
-    })
   }
+
+  return await prisma.cartItem.create({
+    data: {
+      cartId: cart.id,
+      productVariantId,
+      quantity
+    }
+  })
 }
 
 export async function updateCartItem(itemId: string, quantity: number) {
   if (quantity <= 0) {
-    await prisma.cartItem.delete({
+    return await prisma.cartItem.delete({
       where: { id: itemId }
     })
-  } else {
-    await prisma.cartItem.update({
-      where: { id: itemId },
-      data: { quantity }
-    })
   }
+
+  return await prisma.cartItem.update({
+    where: { id: itemId },
+    data: { quantity }
+  })
 }
 
 export async function removeFromCart(itemId: string) {
-  await prisma.cartItem.delete({
+  return await prisma.cartItem.delete({
     where: { id: itemId }
   })
 }
 
 export async function clearCart(sessionId: string) {
-  const cart = await prisma.cart.findUnique({
-    where: { sessionId }
-  })
+  const cart = await getCart(sessionId)
 
   if (cart) {
     await prisma.cartItem.deleteMany({
@@ -91,7 +119,7 @@ export async function createOrder(userId: string, items: any[], total: number) {
       status: 'PENDING',
       items: {
         create: items.map((item) => ({
-          variantId: item.variantId,
+          productVariantId: item.productVariantId,
           quantity: item.quantity,
           price: item.price
         }))
@@ -99,10 +127,12 @@ export async function createOrder(userId: string, items: any[], total: number) {
     }
   })
 
-  // Clear cart
-  await prisma.cartItem.deleteMany({
-    where: { cartId: items[0]?.cartId }
-  })
+  // Clear cart if we have cart info
+  if (items.length > 0 && items[0]?.cartId) {
+    await prisma.cartItem.deleteMany({
+      where: { cartId: items[0]?.cartId }
+    })
+  }
 
   return order
 }

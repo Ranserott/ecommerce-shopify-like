@@ -1,21 +1,20 @@
 'use client'
 
 import { useCartStore } from '@/lib/cart-store'
-import { Button } from '@/components/ui/button'
 import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react'
 
 export function CartSidebar() {
   const { items, isOpen, toggleCart, updateQuantity, removeItem, clearCart, getTotal } = useCartStore()
 
+  if (!isOpen) return null
+
   return (
     <>
       {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={toggleCart}
-        />
-      )}
+      <div
+        className="fixed inset-0 bg-black/50 z-40"
+        onClick={toggleCart}
+      />
 
       {/* Sidebar */}
       <aside
@@ -44,12 +43,6 @@ export function CartSidebar() {
               <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-gray-300" />
               <p className="text-lg">Tu carrito está vacío</p>
               <p className="text-sm mt-2">Agrega productos para comenzar</p>
-              <a
-                href="/products"
-                className="inline-block mt-4 text-blue-600 hover:underline"
-              >
-                Ver Productos
-              </a>
             </div>
           ) : (
             <div className="space-y-4">
@@ -57,7 +50,6 @@ export function CartSidebar() {
                 <div key={item.id} className="flex gap-3 border-b pb-4">
                   {/* Image */}
                   <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.imageUrl}
                       alt={item.variantName}
@@ -118,15 +110,6 @@ export function CartSidebar() {
               <span className="text-sm text-gray-600">Subtotal</span>
               <span className="text-lg font-semibold">${getTotal().toFixed(2)}</span>
             </div>
-            <Button
-              asChild
-              className="w-full"
-              size="lg"
-            >
-              <a href="/checkout">
-                Proceder al Checkout
-              </a>
-            </Button>
             <button
               onClick={clearCart}
               className="w-full text-sm text-gray-600 hover:text-gray-900 transition-colors py-2"

@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Link from 'next/link'
 import { ShoppingCart } from 'lucide-react'
-import { CartSidebar } from '@/components/cart-sidebar'
 import { useCartStore } from '@/lib/cart-store'
+import { CartSidebar } from '@/components/cart-sidebar'
 
 export const metadata: Metadata = {
   title: 'Shopify Ecommerce',
-  description: 'Plataforma moderna de comercio electrónico',
+  description: 'Modern ecommerce platform',
 }
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
           <Link href="/" className="text-2xl font-bold">
             Shopify
           </Link>
-          
+
           <div className="flex items-center gap-6">
             <Link href="/products" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Productos

@@ -1,40 +1,37 @@
+'use client'
+
 import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useCartStore } from '@/lib/cart-store'
-import { ShoppingCart, CreditCard, Truck } from 'lucide-react'
+import { ShoppingCart, CreditCard, Truck, Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
-async function getProduct(slug: string) {
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      variants: {
-        orderBy: { price: 'asc' }
-      },
-      images: {
-        orderBy: { order: 'asc' }
-      },
-      category: true
-    }
-  })
-
-  if (!product) return notFound()
-  return product
-}
-
-export default function CheckoutPage({ params }: { params: { slug: string } }) {
-  const product = await getProduct(params.slug)
+export default function CheckoutPage() {
   const { items, getTotal, clearCart } = useCartStore()
-  const [selectedVariant, setSelectedVariant] = React.useState(product.variants[0])
-  const [quantity, setQuantity] = React.useState(1)
-  const [processing, setProcessing] = React.useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [selectedVariant, setSelectedVariant] = useState<any>(null)
+  const [quantity, setQuantity] = useState(1)
+  const [loading, setLoading] = useState(true)
+
+  // For demo, just use first cart item as product
+  useEffect(() => {
+    if (items.length > 0 && !selectedProduct) {
+      // In real app, fetch full product data
+      setSelectedProduct(items[0] as any)
+      setSelectedVariant(items[0])
+      setLoading(false)
+    } else if (items.length === 0) {
+      setLoading(false)
+    }
+  }, [items, selectedProduct])
 
   const handleCheckout = async () => {
     setProcessing(true)
     try {
-      // Aquí iría la integración con Stripe
-      // Por ahora, solo limpiamos el carrito
+      // Stripe integration would go here
       alert(`Checkout: ${getTotal().toFixed(2)} - Stripe integration coming soon!`)
       clearCart()
     } catch (error) {
@@ -45,150 +42,93 @@ export default function CheckoutPage({ params }: { params: { slug: string } }) {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Navbar */}
       <nav className="flex items-center justify-between p-4 border-b">
-        <a href="/products" className="text-lg font-semibold hover:underline">
+        <Link href="/products" className="text-lg font-semibold hover:underline">
           ← Volver a Productos
-        </a>
+        </Link>
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-5 w-5" />
           <span className="text-sm">Checkout</span>
         </div>
       </nav>
 
+      {/* Cart Summary */}
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left: Product Details */}
-          <div className="space-y-6">
-            {product.images.length > 0 && (
-              <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted">
-                <Image
-                  src={product.images[0].url}
-                  alt={product.images[0].alt || product.name}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Items */}
+          <div className="lg:col-span-2 space-y-4">
+            <h1 className="text-3xl font-bold">Resumen de tu pedido</h1>
 
-            {product.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {product.images.slice(1).map((image) => (
-                  <div key={image.id} className="aspect-square overflow-hidden rounded-md bg-muted">
-                    <Image
-                      src={image.url}
-                      alt={image.alt || product.name}
-                      fill
-                      className="object-cover"
-                    />
+            {items.length === 0 ? (
+              <div className="rounded-lg border bg-card p-8 text-center">
+                <ShoppingCart className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                <h2 className="text-xl font-semibold mb-2">Tu carrito está vacío</h2>
+                <p className="text-muted-foreground mb-4">
+                  Agrega productos para continuar con tu compra
+                </p>
+                <Link href="/products">
+                  <Button className="w-full">
+                    Ver Productos
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <div key={item.id} className="rounded-lg border bg-card p-4 flex gap-4">
+                    {/* Image */}
+                    <div className="w-24 h-24 bg-muted rounded-md overflow-hidden flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.imageUrl}
+                        alt={item.productName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold">{item.productName}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {item.variantName}
+                      </p>
+                      <p className="text-sm">
+                        Cantidad: {item.quantity}
+                      </p>
+                    </div>
+
+                    {/* Price */}
+                    <div className="text-right">
+                      <p className="text-lg font-semibold">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-
-            <div>
-              {product.category && (
-                <span className="inline-block px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded-full mb-3">
-                  {product.category.name}
-                </span>
-              )}
-
-              <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-              <p className="text-muted-foreground">
-                {product.description}
-              </p>
-            </div>
-
-            {/* Variants */}
-            {product.variants.length > 1 && (
-              <div className="space-y-3">
-                <h3 className="font-medium">Variantes:</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {product.variants.map((variant) => (
-                    <button
-                      key={variant.id}
-                      onClick={() => setSelectedVariant(variant)}
-                      className={`p-3 text-left rounded-lg border-2 transition-colors ${
-                        selectedVariant.id === variant.id
-                          ? 'border-primary bg-primary/10'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="font-medium">{variant.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {(variant.price || product.price).toFixed(2)}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quantity */}
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium">Cantidad:</label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-2 hover:bg-gray-100 rounded transition-colors"
-                >
-                  -
-                </button>
-                <span className="w-12 text-center font-medium">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(selectedVariant.stock, quantity + 1))}
-                  className="p-2 hover:bg-gray-100 rounded transition-colors"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Stock */}
-            <p className="text-sm text-muted-foreground">
-              {selectedVariant.stock > 0 ? `${selectedVariant.stock} en stock` : 'Agotado'}
-            </p>
-
-            {/* Total */}
-            <div className="border-t pt-4">
-              <div className="flex justify-between items-center">
-                <span className="text-lg">Total:</span>
-                <span className="text-2xl font-bold">
-                  ${((Number(selectedVariant.price || product.price) * quantity)).toFixed(2)}
-                </span>
-              </div>
-            </div>
           </div>
 
-          {/* Right: Cart Summary */}
+          {/* Right: Summary & Checkout */}
           <div className="space-y-4">
+            {/* Cart Summary */}
             <div className="rounded-lg border bg-card p-6 space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Resumen del Pedido
-              </h2>
+              <h2 className="text-xl font-bold">Resumen</h2>
 
-              {items.length > 0 ? (
+              {items.length > 0 && (
                 <>
-                  <div className="space-y-3">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <div className="flex-1">
-                          <div className="font-medium">{item.productName}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {item.variantName} x {item.quantity}
-                          </div>
-                        </div>
-                        <div className="font-medium">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-t pt-4 space-y-2">
+                  <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
                       <span>${getTotal().toFixed(2)}</span>
@@ -198,19 +138,15 @@ export default function CheckoutPage({ params }: { params: { slug: string } }) {
                       <span className="text-green-600">Gratis</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Impuestos</span>
+                      <span className="text-muted-foreground">Impuestos (19%)</span>
                       <span>${(getTotal() * 0.19).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <div className="flex justify-between text-lg font-bold pt-4 border-t">
                       <span>Total</span>
                       <span>${(getTotal() * 1.19).toFixed(2)}</span>
                     </div>
                   </div>
                 </>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  El carrito está vacío
-                </p>
               )}
             </div>
 
@@ -243,6 +179,7 @@ export default function CheckoutPage({ params }: { params: { slug: string } }) {
               </p>
             </div>
 
+            {/* Checkout Button */}
             {items.length > 0 && (
               <Button
                 onClick={handleCheckout}

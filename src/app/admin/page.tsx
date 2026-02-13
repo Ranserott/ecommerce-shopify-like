@@ -109,7 +109,7 @@ export default async function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold">
-                ${(stats.totalRevenue > 0 ? (stats.totalRevenue / stats.totalOrders / 100).toFixed(2) : '0.00')}
+                ${stats.totalRevenue > 0 ? (stats.totalRevenue / stats.totalOrders / 100).toFixed(2) : '0.00'}
               </div>
             </CardContent>
           </Card>

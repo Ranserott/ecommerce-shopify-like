@@ -1,16 +1,17 @@
 import { prisma } from '@/lib/prisma'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, ShoppingBag, Calendar, User, MoreVertical } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Package, Users, ShoppingCart, DollarSign, TrendingUp, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 async function getOrders() {
   const orders = await prisma.order.findMany({
+    take: 50,
     orderBy: { createdAt: 'desc' },
     include: {
       items: {
         include: {
-          variant: {
+          productVariant: {
             include: {
               product: true
             }
@@ -18,138 +19,99 @@ async function getOrders() {
         }
       },
       user: {
-        select: { id: true, name: true, email: true }
+        select: { name: true, email: true }
       }
-    },
-    take: 50
+    }
   })
 
   return orders
 }
 
-export default async function AdminOrdersPage() {
+export default async function OrdersPage() {
   const orders = await getOrders()
 
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b">
-        <Link href="/admin" className="text-xl font-bold">
-          Shopify
+        <Link href="/admin" className="flex items-center gap-2 text-lg font-semibold hover:underline">
+          <ArrowLeft className="h-5 w-5" />
+          Admin
         </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">
-            Dashboard
-          </Link>
-          <Link href="/admin/products" className="text-sm text-muted-foreground hover:text-foreground">
-            Productos
-          </Link>
-          <Link href="/admin/orders" className="text-sm font-medium">
-            Órdenes
-          </Link>
-        </div>
+        <Button>Órdenes</Button>
       </nav>
 
-      {/* Content */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold">Órdenes</h1>
-            <p className="text-muted-foreground mt-1">
-              {orders.length} órdenes en total
-            </p>
-          </div>
-          <Link href="/">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Ver Tienda
-            </Button>
-          </Link>
-        </div>
+      {/* Orders Content */}
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold mb-8">Órdenes</h1>
 
         {orders.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-24">
-              <ShoppingBag className="h-24 w-24 text-muted-foreground mb-6" />
-              <h2 className="text-2xl font-semibold mb-2">No hay órdenes</h2>
-              <p className="text-muted-foreground text-center">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
+              <CardTitle>No hay órdenes todavía</CardTitle>
+              <CardDescription className="text-center">
                 Las órdenes de los clientes aparecerán aquí
-              </p>
+              </CardDescription>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {orders.map((order) => (
               <Card key={order.id}>
-                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                  <div className="flex items-center gap-4">
-                    <CardTitle>Orden #{order.id.slice(-8).toUpperCase()}</CardTitle>
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(order.createdAt).toLocaleDateString('es-ES')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle>Orden #{order.id.slice(-8).toUpperCase()}</CardTitle>
+                      <CardDescription className="flex items-center gap-2 mt-1">
+                        <Users className="h-4 w-4" />
+                        {order.user?.name || order.user?.email || 'Invitado'}
+                      </CardDescription>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                       order.status === 'PAID'
                         ? 'bg-green-100 text-green-700'
                         : order.status === 'PENDING'
                         ? 'bg-yellow-100 text-yellow-700'
-                        : order.status === 'SHIPPED'
-                        ? 'bg-blue-100 text-blue-700'
-                        : order.status === 'DELIVERED'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
                     }`}>
                       {order.status}
-                    </span>
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Customer Info */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Cliente:</span>
-                    <span className="font-medium">
-                      {order.user?.name || order.user?.email || 'Invitado'}
-                    </span>
+                <CardContent>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">Fecha</span>
+                    <span>{new Date(order.createdAt).toLocaleDateString('es-ES')}</span>
                   </div>
-
-                  {/* Items */}
-                  <div className="border rounded-lg p-4 space-y-3">
-                    <h3 className="text-sm font-medium mb-2">Items ({order.items.length})</h3>
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">
-                            {item.variant?.product?.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.variant?.name}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm">
-                            {item.quantity} x ${(item.price / 100).toFixed(2)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            = ${(item.quantity * item.price / 100).toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="text-2xl font-bold">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold">
                       ${(order.total / 100).toFixed(2)}
                     </span>
                   </div>
+                  {order.items.length > 0 && (
+                    <div className="text-sm mt-3">
+                      <span className="text-muted-foreground">Items:</span>
+                      <div className="mt-2 space-y-2">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex justify-between items-center bg-muted/50 rounded p-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">
+                                {item.productVariant?.product?.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {item.productVariant?.name} x {item.quantity}
+                              </div>
+                            </div>
+                            <div className="text-sm font-medium">
+                              ${((item.price / 100) * item.quantity).toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
